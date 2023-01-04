@@ -2,10 +2,7 @@ package main
 
 import (
 	"fmt"
-
-	"bufio"
 	"os"
-
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
@@ -22,10 +19,11 @@ type CircuitCubic struct {
 }
 
 // Define declares the circuit constraints
-// x**3 + x + 5 == y
+// x > y
 func (circuit *CircuitCubic) Define(api frontend.API) error {
-	x3 := api.Mul(circuit.X, circuit.X, circuit.X)
-	api.AssertIsEqual(circuit.Y, api.Add(x3, circuit.X, 5))
+	// Cmp returns 1 if i1>i2, 0 if i1=i2, -1 if i1<i2
+	result :=  api.Cmp(circuit.X, circuit.Y)
+	api.AssertIsEqual(result, 1)
 	return nil
 }
 
@@ -43,15 +41,15 @@ func main() {
 	}
 
 	//step2. export the groth16.VerifyingKey as a solidity smart contract.
-	var fileName = "./verify/verifyCubic.sol"
+	var fileName = "./verify/verifyScoreUp.sol"
 	var solidityFile, _ = os.Create(fileName)
-	writer := bufio.NewWriter(solidityFile)
-	vk.ExportSolidity(writer)
+	// writer := bufio.NewWriter(solidityFile)
+	vk.ExportSolidity(solidityFile)
 
 	//step3. generate witness and prove
 	assignment := &CircuitCubic{
-		X: frontend.Variable(3),
-		Y: frontend.Variable(35),
+		X: frontend.Variable(2),
+		Y: frontend.Variable(1),
 	}
 
 	witness, _ := frontend.NewWitness(assignment, ecc.BN254)

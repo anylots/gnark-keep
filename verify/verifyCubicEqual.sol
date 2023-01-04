@@ -155,4 +155,75 @@ contract Verifier {
         Pairing.G2Point beta2;
         Pairing.G2Point gamma2;
         Pairing.G2Point delta2;
-        Pairing.G1Point[
+        Pairing.G1Point[2] IC;
+    }
+
+    struct Proof {
+        Pairing.G1Point A;
+        Pairing.G2Point B;
+        Pairing.G1Point C;
+    }
+
+    function verifyingKey() internal pure returns (VerifyingKey memory vk) {
+        vk.alfa1 = Pairing.G1Point(uint256(4175387478045714317785847384280911834131329502106003237196981933812514452989), uint256(9031603385113516625039130459171573672964581692796878058982819178979376968321));
+        vk.beta2 = Pairing.G2Point([uint256(1595869047341568309543245999762592165832590552353370032993167489362848040018), uint256(1421358519287944162243038898347303653398016474579000874770434583838917647179)], [uint256(9044288271583776055387331452910527834313388190694347270451441857401783551118), uint256(17388607963960611172315583100571094564081324906458661642450340384736414246441)]);
+        vk.gamma2 = Pairing.G2Point([uint256(8929537030758886827036068553311691758025342039788894341611030821908757500670), uint256(13584119412670526150492744839808466612697991166612290265702639886931598512488)], [uint256(8835044067502242919349658316278195582487171978803128163939539301935359208799), uint256(5202194119896105981077343696279782325797989425547510419166619061164488750473)]);
+        vk.delta2 = Pairing.G2Point([uint256(4390308310984306331784399483057040929853487374770905315994470043727690281486), uint256(4969570867174045044709676170045184237479290002690043921571531043460384065866)], [uint256(3991895860826240403417841545558495226642059217635186298242236437145610230007), uint256(1508384791832798908860512523897304083010258275862302353976376883162232432276)]);   
+        vk.IC[0] = Pairing.G1Point(uint256(2323193562507413801522206630830731481638596100185245887875757748691859930648), uint256(3413378973125769832541474596645919090294052503066610160742982594110247194243));   
+        vk.IC[1] = Pairing.G1Point(uint256(4859926512579294133824047881467691085944594351958726092775590908865109826189), uint256(20481078012900667300617844421129896111928239091801634103149315291658334210588));
+    }
+    
+    /*
+     * @returns Whether the proof is valid given the hardcoded verifying key
+     *          above and the public inputs
+     */
+    function verifyProof(
+        uint256[2] memory a,
+        uint256[2][2] memory b,
+        uint256[2] memory c,
+        uint256[1] memory input
+    ) public view returns (bool r) {
+
+        Proof memory proof;
+        proof.A = Pairing.G1Point(a[0], a[1]);
+        proof.B = Pairing.G2Point([b[0][0], b[0][1]], [b[1][0], b[1][1]]);
+        proof.C = Pairing.G1Point(c[0], c[1]);
+
+        VerifyingKey memory vk = verifyingKey();
+
+        // Compute the linear combination vk_x
+        Pairing.G1Point memory vk_x = Pairing.G1Point(0, 0);
+
+        // Make sure that proof.A, B, and C are each less than the prime q
+        require(proof.A.X < PRIME_Q, "verifier-aX-gte-prime-q");
+        require(proof.A.Y < PRIME_Q, "verifier-aY-gte-prime-q");
+
+        require(proof.B.X[0] < PRIME_Q, "verifier-bX0-gte-prime-q");
+        require(proof.B.Y[0] < PRIME_Q, "verifier-bY0-gte-prime-q");
+
+        require(proof.B.X[1] < PRIME_Q, "verifier-bX1-gte-prime-q");
+        require(proof.B.Y[1] < PRIME_Q, "verifier-bY1-gte-prime-q");
+
+        require(proof.C.X < PRIME_Q, "verifier-cX-gte-prime-q");
+        require(proof.C.Y < PRIME_Q, "verifier-cY-gte-prime-q");
+
+        // Make sure that every input is less than the snark scalar field
+        for (uint256 i = 0; i < input.length; i++) {
+            require(input[i] < SNARK_SCALAR_FIELD,"verifier-gte-snark-scalar-field");
+            vk_x = Pairing.plus(vk_x, Pairing.scalar_mul(vk.IC[i + 1], input[i]));
+        }
+
+        vk_x = Pairing.plus(vk_x, vk.IC[0]);
+
+        return Pairing.pairing(
+            Pairing.negate(proof.A),
+            proof.B,
+            vk.alfa1,
+            vk.beta2,
+            vk_x,
+            vk.gamma2,
+            proof.C,
+            vk.delta2
+        );
+    }
+}
