@@ -68,6 +68,10 @@ func (circuit *RollupCircuit) Define(api frontend.API) error {
 	// creation of the circuit
 	for i := 0; i < batchSize; i++ {
 
+		//ecdsa
+
+		//merkle
+
 		// update the accounts
 		verifyAccountUpdated(api, circuit.SenderAccountsBefore[i], circuit.ReceiverAccountsBefore[i], 
 			circuit.SenderAccountsAfter[i], circuit.ReceiverAccountsAfter[i], circuit.Transfers[i].Amount)
