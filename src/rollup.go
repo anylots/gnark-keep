@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
@@ -81,6 +82,15 @@ func verifyAccountUpdated(api frontend.API, from, to, fromUpdated, toUpdated Acc
 	nonceUpdated := api.Add(from.Nonce, 1)
 	api.AssertIsEqual(nonceUpdated, fromUpdated.Nonce)
 
+	nonceUpdated_to := api.Add(to.Nonce, 1)
+	api.AssertIsEqual(nonceUpdated_to, toUpdated.Nonce)
+
+
+	// ensure that account is correctly
+	api.AssertIsEqual(from.Index, fromUpdated.Index)
+	api.AssertIsEqual(to.Index, toUpdated.Index)
+
+
 	// ensures that the amount is less than the balance
 	api.AssertIsLessOrEqual(amount, from.Balance)
 
@@ -106,11 +116,11 @@ func main() {
 		return
 	}
 
-	//step2. export the groth16.VerifyingKey as a solidity smart contract.
-	// var fileName = "./verify/rollup.sol"
-	// var solidityFile, _ = os.Create(fileName)
-	// // writer := bufio.NewWriter(solidityFile)
-	// vk.ExportSolidity(solidityFile)
+	// step2. export the groth16.VerifyingKey as a solidity smart contract.
+	var fileName = "./verify/verifyRollup.sol"
+	var solidityFile, _ = os.Create(fileName)
+	// writer := bufio.NewWriter(solidityFile)
+	vk.ExportSolidity(solidityFile)
 
 	//step3. generate witness and prove
 	var assignment RollupCircuit
@@ -145,7 +155,7 @@ func main() {
 
 	//step4. generate public witness and verify
 
-	assignment.ReceiverAccountsAfter[0].Balance = 30
+	// assignment.ReceiverAccountsAfter[0].Balance = 30
 	validPublicWitness, _ := frontend.NewWitness(&assignment, ecc.BN254, frontend.PublicOnly())
 	err = groth16.Verify(proof, vk, validPublicWitness)
 	if err != nil {
