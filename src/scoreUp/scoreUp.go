@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
@@ -11,7 +12,7 @@ import (
 
 // Circuit defines a simple circuit
 // x**3 + x + 5 == y
-type CircuitCubic struct {
+type CircuitScoreUp struct {
 	// struct tags on a variable is optional
 	// default uses variable name and secret visibility.
 	X frontend.Variable `gnark:"x"`
@@ -20,17 +21,17 @@ type CircuitCubic struct {
 
 // Define declares the circuit constraints
 // x > y
-func (circuit *CircuitCubic) Define(api frontend.API) error {
+func (circuit *CircuitScoreUp) Define(api frontend.API) error {
 	// Cmp returns 1 if i1>i2, 0 if i1=i2, -1 if i1<i2
-	result :=  api.Cmp(circuit.X, circuit.Y)
+	result := api.Cmp(circuit.X, circuit.Y)
 	api.AssertIsEqual(result, 1)
 	return nil
 }
 
 func main() {
 	//step1. instantiate circuit
-	var cubicCircuit CircuitCubic
-	r1cs, err := frontend.Compile(ecc.BN254, r1cs.NewBuilder, &cubicCircuit)
+	var circuitScoreUp CircuitScoreUp
+	r1cs, err := frontend.Compile(ecc.BN254, r1cs.NewBuilder, &circuitScoreUp)
 	if err != nil {
 		return
 	}
@@ -47,7 +48,7 @@ func main() {
 	vk.ExportSolidity(solidityFile)
 
 	//step3. generate witness and prove
-	assignment := &CircuitCubic{
+	assignment := &CircuitScoreUp{
 		X: frontend.Variable(2),
 		Y: frontend.Variable(1),
 	}
