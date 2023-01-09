@@ -43,32 +43,29 @@ type AccountConstraints struct {
 
 // TransferConstraints transfer encoded as constraints
 type TransferConstraints struct {
-	Amount         frontend.Variable `gnark:",public"`
+	Amount         frontend.Variable
+	Nonce          frontend.Variable `gnark:"-"`
+	SenderPubKey   eddsa.PublicKey   `gnark:"-"`
+	ReceiverPubKey eddsa.PublicKey   `gnark:"-"`
+	Signature      eddsa.Signature
 }
 
-// func (circuit *RollupCircuit) postInit(api frontend.API) error {
-
-// 	for i := 0; i < batchSize; i++ {
-
-// 		// setting the transfers
-// 		circuit.Transfers[i].Nonce = circuit.SenderAccountsBefore[i].Nonce
-// 		circuit.Transfers[i].SenderPubKey = circuit.PublicKeysSender[i]
-// 		circuit.Transfers[i].ReceiverPubKey = circuit.PublicKeysReceiver[i]
-
-// 	}
-// 	return nil
-// }
 
 // Define declares the circuit's constraints
 func (circuit *RollupCircuit) Define(api frontend.API) error {
-	// if err := circuit.postInit(api); err != nil {
-	// 	return err
-	// }
+	if err := circuit.postInit(api); err != nil {
+		return err
+	}
 
 	// creation of the circuit
 	for i := 0; i < batchSize; i++ {
 
 		//ecdsa
+		// verify the transaction transfer
+		err := verifyTransferSignature(api, circuit.Transfers[i], hFunc)
+		if err != nil {
+			return err
+		}
 
 		//merkle
 
@@ -77,6 +74,27 @@ func (circuit *RollupCircuit) Define(api frontend.API) error {
 			circuit.SenderAccountsAfter[i], circuit.ReceiverAccountsAfter[i], circuit.Transfers[i].Amount)
 	}
 
+	return nil
+}
+
+
+// verifySignatureTransfer ensures that the signature of the transfer is valid
+func verifyTransferSignature(api frontend.API, t TransferConstraints, hFunc mimc.MiMC) error {
+
+	// the signature is on h(nonce ∥ amount ∥ senderpubKey (x&y) ∥ receiverPubkey(x&y))
+	hFunc.Write(t.Nonce, t.Amount, t.SenderPubKey.A.X, t.SenderPubKey.A.Y, t.ReceiverPubKey.A.X, t.ReceiverPubKey.A.Y)
+	htransfer := hFunc.Sum()
+
+	curve, err := twistededwards.NewEdCurve(api, tedwards.BN254)
+	if err != nil {
+		return err
+	}
+
+	hFunc.Reset()
+	err = eddsa.Verify(curve, t.Signature, htransfer, t.SenderPubKey, &hFunc)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -105,6 +123,19 @@ func verifyAccountUpdated(api frontend.API, from, to, fromUpdated, toUpdated Acc
 	toBalanceUpdated := api.Add(to.Balance, amount)
 	api.AssertIsEqual(toBalanceUpdated, toUpdated.Balance)
 
+}
+
+func (circuit *RollupCircuit) postInit(api frontend.API) error {
+
+	for i := 0; i < batchSize; i++ {
+
+		// setting the transfers
+		circuit.Transfers[i].Nonce = circuit.SenderAccountsBefore[i].Nonce
+		circuit.Transfers[i].SenderPubKey = circuit.PublicKeysSender[i]
+		circuit.Transfers[i].ReceiverPubKey = circuit.PublicKeysReceiver[i]
+
+	}
+	return nil
 }
 
 func main() {
