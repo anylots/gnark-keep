@@ -3,11 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
-
+	"github.com/consensys/gnark/std/algebra/twistededwards"
+	"github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/gnark/std/signature/eddsa"
 )
 
 const (
@@ -50,7 +53,6 @@ type TransferConstraints struct {
 	Signature      eddsa.Signature
 }
 
-
 // Define declares the circuit's constraints
 func (circuit *RollupCircuit) Define(api frontend.API) error {
 	if err := circuit.postInit(api); err != nil {
@@ -70,13 +72,12 @@ func (circuit *RollupCircuit) Define(api frontend.API) error {
 		//merkle
 
 		// update the accounts
-		verifyAccountUpdated(api, circuit.SenderAccountsBefore[i], circuit.ReceiverAccountsBefore[i], 
+		verifyAccountUpdated(api, circuit.SenderAccountsBefore[i], circuit.ReceiverAccountsBefore[i],
 			circuit.SenderAccountsAfter[i], circuit.ReceiverAccountsAfter[i], circuit.Transfers[i].Amount)
 	}
 
 	return nil
 }
-
 
 // verifySignatureTransfer ensures that the signature of the transfer is valid
 func verifyTransferSignature(api frontend.API, t TransferConstraints, hFunc mimc.MiMC) error {
@@ -107,11 +108,9 @@ func verifyAccountUpdated(api frontend.API, from, to, fromUpdated, toUpdated Acc
 	nonceUpdated_to := api.Add(to.Nonce, 1)
 	api.AssertIsEqual(nonceUpdated_to, toUpdated.Nonce)
 
-
 	// ensure that account is correctly
 	api.AssertIsEqual(from.Index, fromUpdated.Index)
 	api.AssertIsEqual(to.Index, toUpdated.Index)
-
 
 	// ensures that the amount is less than the balance
 	api.AssertIsLessOrEqual(amount, from.Balance)
@@ -172,7 +171,7 @@ func main() {
 	//// set witnesses for the transfer
 	assignment.Transfers[0].Amount = 20
 
-    // set the witnesses for the account after update
+	// set the witnesses for the account after update
 	assignment.SenderAccountsAfter[0].Index = 0
 	assignment.SenderAccountsAfter[0].Nonce = 1
 	assignment.SenderAccountsAfter[0].Balance = 80
