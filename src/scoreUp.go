@@ -68,3 +68,12 @@ func main() {
 	}
 	fmt.Printf("verification succeded\n")
 }
+
+function prove(assignment: &CircuitCubic){
+	witness, _ := frontend.NewWitness(assignment, ecc.BN254)
+
+	proof, err := groth16.Prove(r1cs, pk, witness)
+	if err != nil {
+		return
+	}
+}
