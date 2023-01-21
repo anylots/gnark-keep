@@ -40,7 +40,7 @@ type RollupCircuit struct {
 // AccountConstraints accounts encoded as constraints
 type AccountConstraints struct {
 	Index   frontend.Variable // index in the tree
-	Nonce   frontend.Variable // nb transactions done so far from this account
+	Nonce   frontend.Variable `gnark:",public"` // nb transactions done so far from this account
 	Balance frontend.Variable `gnark:",public"`
 }
 
