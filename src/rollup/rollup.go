@@ -99,6 +99,10 @@ func verifyTransferSignature(api frontend.API, t TransferConstraints, hFunc mimc
 	return nil
 }
 
+func verifyMerkle(api frontend.API, from, to, fromUpdated, toUpdated AccountConstraints, amount frontend.Variable) {
+
+}
+
 func verifyAccountUpdated(api frontend.API, from, to, fromUpdated, toUpdated AccountConstraints, amount frontend.Variable) {
 
 	// ensure that nonce is correctly updated
